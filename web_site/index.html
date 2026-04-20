@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zabbix Monitoring System</title>
+    <style>
+        body { background-color: #ebeef0; font-family: Tahoma, Arial, sans-serif; margin: 0; color: #333; }
+        .top-bar { background-color: #d40000; height: 4px; }
+        .login-container { width: 420px; margin: 80px auto; background: #fff; border: 1px solid #ccd5d9; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .logo h1 { font-size: 24px; color: #d40000; margin: 0; text-align: center; font-weight: bold; }
+        .logo p { font-size: 11px; color: #777; text-align: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold; color: #4f5355; }
+        input { width: 100%; padding: 10px; border: 1px solid #acbbc2; border-radius: 2px; box-sizing: border-box; }
+        .btn-login { background: #d40000; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-login:disabled { background: #999; }
+        .error-msg { background: #fde9eb; color: #cc0000; border: 1px solid #f9babb; padding: 10px; font-size: 12px; margin-bottom: 15px; display: none; }
+        .footer-links { margin-top: 20px; font-size: 11px; text-align: center; color: #0275b8; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="login-container">
+    <div class="logo"><h1>ZABBIX</h1><p>OMÜ Monitoring Server v4.4.10</p></div>
+    <div id="statusBox" class="error-msg"></div>
+    <form>
+        <div class="form-group"><label>User</label><input type="text" id="u" placeholder="Username"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="p" placeholder="Password"></div>
+        <button type="button" class="btn-login" id="b" onclick="attemptLogin()">Sign in</button>
+    </form>
+    <div class="footer-links" onclick="location.href='dashboard.html?mode=guest'">Guest login | Forgot password? | Help</div>
+</div>
+
+<script>
+    let tries = 0;
+    function attemptLogin() {
+        tries++;
+        const u = document.getElementById("u").value;
+        const p = document.getElementById("p").value;
+        const btn = document.getElementById("b");
+        const status = document.getElementById("statusBox");
+
+        btn.disabled = true;
+        btn.innerHTML = "Connecting to API...";
+
+        // FAKE NETWORK REQUEST: Hacker F12 Network tabında bunu görecek!
+        fetch('/api/v1/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({user: u, pass: p}),
+            headers: {'Content-Type': 'application/json'}
+        }).catch(e => console.log("Direct API access restricted. Using internal fallback."));
+
+        let delay = 1000 + (tries * 500);
+
+        setTimeout(() => {
+            // Şifre kontrolü (Base64 ile hafif gizli)
+            if (u === "admin" && btoa(p) === "b211X2FkbWluXzIwMjY=") {
+                location.href = 'dashboard.html';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = "Sign in";
+                status.style.display = "block";
+                
+                // Rastgele hata mesajları
+                const errs = ["Invalid credentials.", "Authentication backend timeout.", "Database connection error.", "Access denied for: " + u];
+                status.innerHTML = (tries > 6) ? "Rate limit exceeded. System throttle active." : errs[Math.floor(Math.random()*errs.length)];
+                
+                if(tries > 12) { 
+                   btn.style.display = "none";
+                   status.innerHTML = "CRITICAL: IP flagged for suspicious activity. Connection reset.";
+                }
+            }
+        }, delay);
+    }
+</script>
+</body>
+</html>
