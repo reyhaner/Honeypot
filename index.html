@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zabbix Monitoring System - OMÜ Yerleşke Ağı</title>
+    <style>
+        body { background-color: #ebeef0; font-family: Tahoma, Arial, sans-serif; margin: 0; color: #333; }
+        .top-bar { background-color: #d40000; height: 4px; }
+        .login-container { width: 420px; margin: 80px auto; background: #fff; border: 1px solid #ccd5d9; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .logo { margin-bottom: 25px; text-align: center; }
+        .logo h1 { font-size: 24px; color: #d40000; margin: 0; font-weight: bold; }
+        .logo p { font-size: 11px; color: #777; margin: 5px 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold; color: #4f5355; }
+        input { width: 100%; padding: 10px; border: 1px solid #acbbc2; border-radius: 2px; box-sizing: border-box; font-size: 14px; }
+        input:focus { border-color: #d40000; outline: none; }
+        .btn-login { background: #d40000; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 2px; font-size: 14px; margin-top: 10px; transition: 0.3s; }
+        .btn-login:disabled { background: #999; cursor: not-allowed; }
+        .footer-links { margin-top: 20px; font-size: 11px; text-align: center; border-top: 1px solid #ebeef0; padding-top: 15px; color: #0275b8; cursor: pointer; }
+        .legacy-notice { font-size: 10px; color: #999; text-align: center; margin-top: 30px; }
+        .error-msg { background: #fde9eb; color: #cc0000; border: 1px solid #f9babb; padding: 10px; font-size: 12px; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<div class="login-container">
+    <div class="logo">
+        <h1>ZABBIX</h1>
+        <p>OMÜ Bilgi İşlem Daire Başkanlığı - Monitoring Server v4.4.10</p>
+    </div>
+
+    <div id="statusBox" class="error-msg">Session expired. Please log in again.</div>
+
+    <form id="loginForm">
+        <div class="form-group">
+            <label>User</label>
+            <input type="text" id="u" placeholder="Admin / Guest" autofocus>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="p" placeholder="Password">
+        </div>
+        <div style="font-size: 12px; margin-bottom: 15px;">
+            <input type="checkbox" style="width: auto;"> Remember me for 30 days
+        </div>
+        
+        <button type="button" class="btn-login" id="b" onclick="attemptLogin()">Sign in</button>
+    </form>
+
+    <div class="footer-links" onclick="location.href='dashboard.html?mode=guest'">
+        Guest login | Forgot password? | Help
+    </div>
+</div>
+
+<div class="legacy-notice">
+    &copy; 2001-2026 Zabbix SIA. All rights reserved. <br>
+    Running on: <strong>SRV-MON-02.omu.edu.tr</strong> (Internal Network)
+</div>
+
+<script>
+    let tries = 0;
+
+    function attemptLogin() {
+        tries++;
+        const userVal = document.getElementById("u").value;
+        const passVal = document.getElementById("p").value;
+        const btn = document.getElementById("b");
+        const status = document.getElementById("statusBox");
+
+        // Görsel efekt: Giriş yapılıyor hissi
+        btn.disabled = true;
+        btn.innerHTML = "Authenticating...";
+
+        // Form verisi hazırla
+        let formData = new FormData();
+        formData.append('user', userVal);
+        formData.append('pass', passVal);
+
+        // BACKEND'E (PHP) GERÇEK İSTEK GÖNDER
+        fetch('login.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            // Rate limiting (Yavaşlatma) simülasyonu için delay ekliyoruz
+            let delay = 500 + (tries * 300);
+            
+            setTimeout(() => {
+                if (response.ok) {
+                    // Şifre doğruysa Dashboard'a git
+                    location.href = 'dashboard.html';
+                } else {
+                    // Hata durumunda (401 vb.)
+                    btn.disabled = false;
+                    btn.innerHTML = "Sign in";
+                    status.style.display = "block";
+                    
+                    const errors = [
+                        "Invalid credentials.",
+                        "Login failed: Access denied.",
+                        "Authentication backend timeout.",
+                        "Remote database connection error."
+                    ];
+                    
+                    status.innerHTML = (tries > 5) 
+                        ? "Too many attempts. System throttle active." 
+                        : errors[Math.floor(Math.random() * errors.length)];
+                }
+            }, delay);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            btn.disabled = false;
+            btn.innerHTML = "Sign in";
+        });
+    }
+</script>
+
+</body>
+</html>
